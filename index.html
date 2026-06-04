@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Theme Converter — Dark ↔ Light</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f3;
+      --bg-tertiary: #ebebea;
+      --text-primary: #1a1a18;
+      --text-secondary: #6b6b67;
+      --border-light: rgba(0,0,0,0.1);
+      --border-medium: rgba(0,0,0,0.2);
+      --border-strong: rgba(0,0,0,0.35);
+      --accent: #5a4ae3;
+      --accent-bg: #f0effe;
+      --accent-light: #ede9fd;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --success-bg: #eaf3de;
+      --success-text: #3b6d11;
+      --warn-bg: #faeeda;
+      --warn-text: #854f0b;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1c1c1a;
+        --bg-secondary: #252523;
+        --bg-tertiary: #2e2e2b;
+        --text-primary: #f0ede6;
+        --text-secondary: #9a9992;
+        --border-light: rgba(255,255,255,0.08);
+        --border-medium: rgba(255,255,255,0.14);
+        --border-strong: rgba(255,255,255,0.25);
+        --accent-bg: #2a2560;
+        --accent-light: #1f1b50;
+        --success-bg: #1a2e0d;
+        --success-text: #85c44a;
+        --warn-bg: #2e1f07;
+        --warn-text: #e8a642;
+      }
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg-tertiary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text-primary);
+    }
+
+    .page {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 4rem;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .header-icon {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: var(--accent);
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+      font-size: 26px;
+      color: #fff;
+    }
+    .header h1 {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      color: var(--text-primary);
+    }
+    .header p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* Card */
+    .card {
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+
+    /* Upload Zone */
+    .upload-zone {
+      border: 1.5px dashed var(--border-medium);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--bg-secondary);
+      position: relative;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .upload-zone .upload-icon {
+      font-size: 38px;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 10px;
+    }
+    .upload-zone .upload-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .upload-zone .upload-title span {
+      color: var(--accent);
+    }
+    .upload-zone .upload-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 5px;
+    }
+    #fileInput { display: none; }
+
+    /* File Info */
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      margin-top: 12px;
+      border: 0.5px solid var(--border-light);
+    }
+    .file-info.visible { display: flex; }
+    .file-info i { font-size: 20px; color: var(--accent); }
+    .file-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-size {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 18px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: flex; align-items: center;
+      transition: color 0.15s;
+    }
+    .remove-btn:hover { color: #d94f4f; }
+
+    /* Mode Options */
+    .options-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .option-btn {
+      padding: 1rem 1rem;
+      border-radius: var(--radius-lg);
+      border: 1.5px solid var(--border-light);
+      background: var(--bg-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      transition: all 0.18s;
+      text-align: left;
+    }
+    .option-btn:hover { border-color: var(--border-strong); }
+    .option-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-bg);
+      color: var(--accent);
+    }
+    .option-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      transition: background 0.18s, color 0.18s;
+    }
+    .d2l .option-icon { background: #2c2c2a; color: #f1efe8; }
+    .l2d .option-icon { background: #f1efe8; color: #2c2c2a; border: 1px solid #d3d1c7; }
+    .option-btn.active .option-icon { background: var(--accent); color: #fff; }
+    .option-text-sub {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Convert Button */
+    .convert-btn {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+      margin-top: 1.25rem;
+    }
+    .convert-btn:hover:not(:disabled) { opacity: 0.88; }
+    .convert-btn:active:not(:disabled) { transform: scale(0.98); }
+    .convert-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Progress */
+    .progress-wrap {
+      display: none;
+      margin-top: 1.25rem;
+    }
+    .progress-wrap.visible { display: block; }
+    .progress-track {
+      height: 5px;
+      background: var(--border-light);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.35s ease;
+    }
+    .progress-msg {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    /* Results */
+    .results-card {
+      display: none;
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem;
+    }
+    .results-card.visible { display: block; }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 1.25rem;
+    }
+    .preview-panel {
+      border: 0.5px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .preview-header {
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+      border-bottom: 0.5px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      margin-left: auto;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .badge-same { background: var(--warn-bg); color: var(--warn-text); }
+    .badge-converted { background: var(--success-bg); color: var(--success-text); }
+
+    .preview-body {
+      height: 200px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      background: #888;
+    }
+    .preview-body img,
+    .preview-body canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Detected Theme Info */
+    .detected-info {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+      border: 0.5px solid var(--border-light);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .detected-info.visible { display: flex; }
+    .detected-info i { font-size: 16px; }
+    .detected-info strong { color: var(--text-primary); }
+
+    /* Download Button */
+    .download-btn {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.15s;
+    }
+    .download-btn:hover { background: var(--bg-secondary); }
+
+    @media (max-width: 480px) {
+      .page { padding: 1.5rem 1rem 3rem; }
+      .preview-grid { grid-template-columns: 1fr; }
+      .preview-body { height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-icon"><i class="ti ti-wand" aria-hidden="true"></i></div>
+      <h1>Theme Converter</h1>
+      <p>Upload an image or PDF and convert it between<br>dark and light themes instantly.</p>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card">
+      <p class="section-label">Upload File</p>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <i class="ti ti-cloud-upload upload-icon" aria-hidden="true"></i>
+        <p class="upload-title"><span>Click to upload</span> or drag & drop</p>
+        <p class="upload-sub">PNG, JPG, WEBP, PDF supported</p>
+        <input type="file" id="fileInput" accept="image/*,application/pdf" />
+      </div>
+      <div class="file-info" id="fileInfo">
+        <i class="ti ti-file-filled" aria-hidden="true"></i>
+        <span class="file-name" id="fileName"></span>
+        <span class="file-size" id="fileSize"></span>
+        <button class="remove-btn" onclick="removeFile()" title="Remove file">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Options Card -->
+    <div class="card">
+      <p class="section-label">Conversion Mode</p>
+      <div class="options-row">
+        <button class="option-btn d2l active" id="btn-d2l" onclick="selectMode('dark-to-light')">
+          <div class="option-icon"><i class="ti ti-sun" aria-hidden="true"></i></div>
+          <div>
+            <div>Dark → Light</div>
+            <div class="option-text-sub">Convert dark to light</div>
+          </div>
+        </button>
+        <button class="option-btn l2d" id="btn-l2d" onclick="selectMode('light-to-dark')">
+          <div class="option-icon"><i class="ti ti-moon" aria-hidden="true"></i></div>
+          <div>
+            <div>Light → Dark</div>
+            <div class="option-text-sub">Convert light to dark</div>
+          </div>
+        </button>
+      </div>
+      <button class="convert-btn" id="convertBtn" onclick="startConversion()" disabled>
+        <i class="ti ti-wand" aria-hidden="true"></i> Convert
+      </button>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-msg" id="progressMsg"></p>
+      </div>
+    </div>
+
+    <!-- Results Card -->
+    <div class="results-card" id="resultsCard">
+      <p class="section-label">Result</p>
+      <div class="detected-info" id="detectedInfo">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        <span id="detectedText"></span>
+      </div>
+      <div class="preview-grid">
+        <div class="preview-panel">
+          <div class="preview-header">
+            <i class="ti ti-photo" aria-hidden="true"></i> Original
+          </div>
+          <div class="preview-body">
+            <img id="originalImg" src="" alt="Original" />
+          </div>
+        </div>
+        <div class="preview-panel">
+          <div class="preview-header">
+            <i class="ti ti-wand" aria-hidden="true"></i> Converted
+            <span class="badge" id="resultBadge" style="display:none"></span>
+          </div>
+          <div class="preview-body">
+            <canvas id="resultCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+      <button class="download-btn" id="downloadBtn" onclick="downloadResult()">
+        <i class="ti ti-download" aria-hidden="true"></i> Download Result
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    let currentMode = 'dark-to-light';
+    let currentFile = null;
+    let resultDataUrl = null;
+    let originalDataUrl = null;
+
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput  = document.getElementById('fileInput');
+
+    uploadZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadZone.classList.add('drag-over');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      const f = e.dataTransfer.files[0];
+      if (f) handleFile(f);
+    });
+    fileInput.addEventListener('change', e => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function handleFile(file) {
+      currentFile = file;
+      document.getElementById('fileName').textContent = file.name;
+      document.getElementById('fileSize').textContent = formatBytes(file.size);
+      document.getElementById('fileInfo').classList.add('visible');
+      document.getElementById('convertBtn').disabled = false;
+      document.getElementById('resultsCard').classList.remove('visible');
+      document.getElementById('progressWrap').classList.remove('visible');
+      resultDataUrl = null;
+    }
+
+    function removeFile() {
+      currentFile = null;
+      fileInput.value = '';
+      document.getElementById('fileInfo').classList.remove('visible');
+      document.getElementById('convertBtn').disabled = true;
+      document.getElementById('resultsCard').classList.remove('visible');
+      document.getElementById('progressWrap').classList.remove('visible');
+      resultDataUrl = null;
+    }
+
+    function selectMode(mode) {
+      currentMode = mode;
+      const d2l = document.getElementById('btn-d2l');
+      const l2d = document.getElementById('btn-l2d');
+      d2l.classList.toggle('active', mode === 'dark-to-light');
+      d2l.classList.remove('l2d');
+      d2l.classList.add('d2l');
+      l2d.classList.toggle('active', mode === 'light-to-dark');
+      l2d.classList.remove('d2l');
+      l2d.classList.add('l2d');
+    }
+
+    function setProgress(pct, msg) {
+      document.getElementById('progressWrap').classList.add('visible');
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressMsg').textContent = msg;
+    }
+
+    function hideProgress() {
+      setTimeout(() => {
+        document.getElementById('progressWrap').classList.remove('visible');
+      }, 1200);
+    }
+
+    async function startConversion() {
+      if (!currentFile) return;
+      document.getElementById('convertBtn').disabled = true;
+      document.getElementById('resultsCard').classList.remove('visible');
+      document.getElementById('detectedInfo').classList.remove('visible');
+      try {
+        if (currentFile.type === 'application/pdf') {
+          await convertPDF();
+        } else {
+          await convertImage();
+        }
+      } catch (err) {
+        setProgress(0, 'Error: ' + err.message);
+        document.getElementById('convertBtn').disabled = false;
+      }
+    }
+
+    function loadImg(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          originalDataUrl = e.target.result;
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function getAvgBrightness(imageData) {
+      let total = 0;
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        total += 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+      }
+      return total / (d.length / 4);
+    }
+
+    function invertImageData(imageData) {
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        d[i]   = 255 - d[i];
+        d[i+1] = 255 - d[i+1];
+        d[i+2] = 255 - d[i+2];
+      }
+    }
+
+    async function convertImage() {
+      setProgress(20, 'Loading image...');
+      const img = await loadImg(currentFile);
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width  = img.width;
+      offCanvas.height = img.height;
+      const ctx = offCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      setProgress(50, 'Detecting theme...');
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const avg = getAvgBrightness(imageData);
+      const isDark = avg < 128;
+
+      const wantDark  = currentMode === 'light-to-dark';
+      const wantLight = currentMode === 'dark-to-light';
+      const noChange  = (isDark && wantDark) || (!isDark && wantLight);
+
+      showDetected(isDark, noChange);
+
+      const resultCanvas = document.getElementById('resultCanvas');
+      resultCanvas.width  = img.width;
+      resultCanvas.height = img.height;
+      const rCtx = resultCanvas.getContext('2d');
+
+      setProgress(80, noChange ? 'No conversion needed...' : 'Converting theme...');
+
+      if (noChange) {
+        rCtx.drawImage(img, 0, 0);
+      } else {
+        invertImageData(imageData);
+        rCtx.putImageData(imageData, 0, 0);
+      }
+
+      setProgress(100, noChange ? 'Done — image already matches selected theme.' : 'Conversion complete!');
+      document.getElementById('originalImg').src = originalDataUrl;
+      resultDataUrl = resultCanvas.toDataURL('image/png');
+      showResults(noChange);
+    }
+
+    async function convertPDF() {
+      setProgress(15, 'Loading PDF library...');
+
+      if (!window.pdfjsLib) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+
+      setProgress(35, 'Reading PDF...');
+      const arrayBuffer = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.onerror = rej;
+        r.readAsArrayBuffer(currentFile);
+      });
+
+      setProgress(55, 'Rendering PDF page...');
+      const pdf      = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page     = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 1.8 });
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width  = viewport.width;
+      offCanvas.height = viewport.height;
+      const ctx = offCanvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      originalDataUrl = offCanvas.toDataURL('image/png');
+      document.getElementById('originalImg').src = originalDataUrl;
+
+      setProgress(72, 'Detecting theme...');
+      const imageData = ctx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+      const avg    = getAvgBrightness(imageData);
+      const isDark = avg < 128;
+
+      const wantDark  = currentMode === 'light-to-dark';
+      const wantLight = currentMode === 'dark-to-light';
+      const noChange  = (isDark && wantDark) || (!isDark && wantLight);
+
+      showDetected(isDark, noChange);
+
+      const resultCanvas = document.getElementById('resultCanvas');
+      resultCanvas.width  = offCanvas.width;
+      resultCanvas.height = offCanvas.height;
+      const rCtx = resultCanvas.getContext('2d');
+
+      setProgress(88, noChange ? 'No conversion needed...' : 'Converting theme...');
+
+      if (noChange) {
+        rCtx.drawImage(offCanvas, 0, 0);
+      } else {
+        invertImageData(imageData);
+        rCtx.putImageData(imageData, 0, 0);
+      }
+
+      setProgress(100, noChange ? 'Done — PDF already matches selected theme.' : 'Conversion complete!');
+      resultDataUrl = resultCanvas.toDataURL('image/png');
+      showResults(noChange);
+    }
+
+    function showDetected(isDark, noChange) {
+      const el = document.getElementById('detectedInfo');
+      const tx = document.getElementById('detectedText');
+      el.classList.add('visible');
+      if (noChange) {
+        tx.innerHTML = `Detected: <strong>${isDark ? 'Dark' : 'Light'}</strong> file — already matches your selected mode. No changes applied.`;
+      } else {
+        tx.innerHTML = `Detected: <strong>${isDark ? 'Dark' : 'Light'}</strong> file — converting to <strong>${isDark ? 'Light' : 'Dark'}</strong> theme.`;
+      }
+    }
+
+    function showResults(noChange) {
+      const badge = document.getElementById('resultBadge');
+      badge.style.display = 'inline-block';
+      if (noChange) {
+        badge.className = 'badge badge-same';
+        badge.textContent = 'No change';
+      } else {
+        badge.className = 'badge badge-converted';
+        badge.textContent = 'Converted';
+      }
+      document.getElementById('resultsCard').classList.add('visible');
+      document.getElementById('convertBtn').disabled = false;
+      hideProgress();
+    }
+
+    function downloadResult() {
+      if (!resultDataUrl) return;
+      const a = document.createElement('a');
+      const base = (currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'file');
+      a.download = base + '-converted.png';
+      a.href = resultDataUrl;
+      a.click();
+    }
+  </script>
+</body>
+</html>
