@@ -1,6 +1,6 @@
 let currentMode     = 'dark-to-light';
 let currentFile     = null;
-let allPageDataUrls = [];   // one PNG data-URL per converted page
+let allPageDataUrls = [];   // converted PNG data-URL per page
 let originalDataUrl = null;
 let isPDF           = false;
 
@@ -59,13 +59,12 @@ function selectMode(mode) {
   document.getElementById('btn-l2d').classList.toggle('active', mode === 'light-to-dark');
 }
 
-// ── Progress Bar ─────────────────────────────────────────────────
+// ── Progress ─────────────────────────────────────────────────────
 function setProgress(pct, msg) {
   document.getElementById('progressWrap').classList.add('visible');
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressMsg').textContent   = msg;
 }
-
 function hideProgress() {
   setTimeout(() => document.getElementById('progressWrap').classList.remove('visible'), 1400);
 }
@@ -97,8 +96,10 @@ async function startConversion() {
   document.getElementById('detectedInfo').classList.remove('visible');
   document.getElementById('pageCountInfo').classList.remove('visible');
   document.getElementById('pagesStrip').classList.remove('visible');
-  document.getElementById('pagesStrip').innerHTML = '';
+  document.getElementById('pagesStrip').innerHTML    = '';
   document.getElementById('allPagesLabel').style.display = 'none';
+  document.getElementById('pageSummaryWrap').style.display = 'none';
+  document.getElementById('summaryBody').innerHTML   = '';
   allPageDataUrls = [];
 
   try {
@@ -130,19 +131,17 @@ async function convertImage() {
     reader.readAsDataURL(currentFile);
   });
 
-  const off = document.createElement('canvas');
-  off.width  = img.width;
-  off.height = img.height;
-  const ctx  = off.getContext('2d');
+  const off   = document.createElement('canvas');
+  off.width   = img.width;
+  off.height  = img.height;
+  const ctx   = off.getContext('2d');
   ctx.drawImage(img, 0, 0);
 
   setProgress(55, 'Detecting theme...');
-  const imgData = ctx.getImageData(0, 0, img.width, img.height);
-  const isDark  = getAvgBrightness(imgData) < 128;
+  const imgData  = ctx.getImageData(0, 0, img.width, img.height);
+  const isDark   = getAvgBrightness(imgData) < 128;
   const noChange = (isDark && currentMode === 'light-to-dark') ||
                    (!isDark && currentMode === 'dark-to-light');
-
-  showDetected(isDark, noChange);
 
   const rc   = document.getElementById('resultCanvas');
   rc.width   = img.width;
@@ -157,22 +156,35 @@ async function convertImage() {
     rCtx.putImageData(imgData, 0, 0);
   }
 
-  document.getElementById('originalImg').src = originalDataUrl;
+  document.getElementById('originalImg').src          = originalDataUrl;
   document.getElementById('origHeaderText').textContent = 'Original';
   document.getElementById('convHeaderText').textContent = 'Converted';
   document.getElementById('downloadBtnText').textContent = 'Download PNG';
 
-  allPageDataUrls = [rc.toDataURL('image/png')];
+  // Detected info for image
+  const detEl = document.getElementById('detectedInfo');
+  const detTx = document.getElementById('detectedText');
+  detEl.classList.add('visible');
+  detTx.innerHTML = noChange
+    ? `Detected: <strong>${isDark ? 'Dark' : 'Light'}</strong> — already matches selected mode. No changes applied.`
+    : `Detected: <strong>${isDark ? 'Dark' : 'Light'}</strong> — converted to <strong>${isDark ? 'Light' : 'Dark'}</strong>.`;
 
+  const badge = document.getElementById('resultBadge');
+  badge.style.display = 'inline-block';
+  badge.className     = 'badge ' + (noChange ? 'badge-same' : 'badge-converted');
+  badge.textContent   = noChange ? 'No change' : 'Converted';
+
+  allPageDataUrls = [rc.toDataURL('image/png')];
   setProgress(100, noChange ? 'Done — already matches selected theme.' : 'Conversion complete!');
-  showResults(noChange);
+  document.getElementById('resultsCard').classList.add('visible');
+  document.getElementById('convertBtn').disabled = false;
+  hideProgress();
 }
 
-// ── PDF Conversion (ALL PAGES → output PDF) ──────────────────────
+// ── PDF Conversion — PER-PAGE DETECTION ─────────────────────────
 async function convertPDF() {
   setProgress(10, 'Loading PDF library...');
 
-  // Load PDF.js if not already loaded
   if (!window.pdfjsLib) {
     await new Promise((res, rej) => {
       const s   = document.createElement('script');
@@ -195,38 +207,19 @@ async function convertPDF() {
 
   const pdf        = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const totalPages = pdf.numPages;
+  setProgress(25, `PDF loaded — ${totalPages} page${totalPages > 1 ? 's' : ''} found. Processing each page...`);
 
-  setProgress(25, `PDF loaded — ${totalPages} page${totalPages > 1 ? 's' : ''} found...`);
+  const strip      = document.getElementById('pagesStrip');
+  const tbody      = document.getElementById('summaryBody');
+  strip.innerHTML  = '';
+  tbody.innerHTML  = '';
 
-  // Detect theme from page 1
-  const page1  = await pdf.getPage(1);
-  const vp1    = page1.getViewport({ scale: 1.8 });
-  const detCv  = document.createElement('canvas');
-  detCv.width  = vp1.width;
-  detCv.height = vp1.height;
-  const detCtx = detCv.getContext('2d');
-  await page1.render({ canvasContext: detCtx, viewport: vp1 }).promise;
+  let convertedCount = 0;
+  let skippedCount   = 0;
 
-  const detData  = detCtx.getImageData(0, 0, detCv.width, detCv.height);
-  const isDark   = getAvgBrightness(detData) < 128;
-  const noChange = (isDark && currentMode === 'light-to-dark') ||
-                   (!isDark && currentMode === 'dark-to-light');
-
-  showDetected(isDark, noChange);
-
-  // Store original page 1 preview
-  originalDataUrl = detCv.toDataURL('image/png');
-  document.getElementById('originalImg').src = originalDataUrl;
-  document.getElementById('origHeaderText').textContent = 'Original (Page 1)';
-  document.getElementById('convHeaderText').textContent = 'Converted (Page 1)';
-
-  const strip = document.getElementById('pagesStrip');
-  strip.innerHTML = '';
-
-  // Process every page
   for (let i = 1; i <= totalPages; i++) {
-    const pct = 28 + Math.round(((i - 1) / totalPages) * 62);
-    setProgress(pct, `Converting page ${i} of ${totalPages}...`);
+    const pct = 25 + Math.round(((i - 1) / totalPages) * 65);
+    setProgress(pct, `Processing page ${i} of ${totalPages}...`);
 
     const page = await pdf.getPage(i);
     const vp   = page.getViewport({ scale: 1.8 });
@@ -237,75 +230,120 @@ async function convertPDF() {
     const ctx  = cv.getContext('2d');
     await page.render({ canvasContext: ctx, viewport: vp }).promise;
 
-    if (!noChange) {
-      const imgData = ctx.getImageData(0, 0, vp.width, vp.height);
+    // ── Per-page brightness detection ──
+    const imgData   = ctx.getImageData(0, 0, vp.width, vp.height);
+    const avg       = getAvgBrightness(imgData);
+    const pageIsDark = avg < 128;
+
+    // Decide: does this page need conversion to reach the target theme?
+    const targetDark  = currentMode === 'light-to-dark';
+    const needsChange = pageIsDark !== targetDark;
+    // i.e. if target is dark and page is already dark → skip
+    //      if target is dark and page is light → convert
+    //      if target is light and page is dark → convert
+    //      if target is light and page is light → skip
+
+    if (needsChange) {
       invertImageData(imgData);
       ctx.putImageData(imgData, 0, 0);
+      convertedCount++;
+    } else {
+      skippedCount++;
     }
 
     const dataUrl = cv.toDataURL('image/png');
     allPageDataUrls.push(dataUrl);
 
-    // Page 1 → main preview canvas
+    // Page 1 → main preview
     if (i === 1) {
-      const rc   = document.getElementById('resultCanvas');
-      rc.width   = vp.width;
-      rc.height  = vp.height;
-      rc.getContext('2d').drawImage(cv, 0, 0);
+      originalDataUrl = (() => {
+        // Reconstruct original page 1 separately for preview
+        const orig   = document.createElement('canvas');
+        orig.width   = vp.width;
+        orig.height  = vp.height;
+        // Re-render (we already have imgData mutated, so redraw from scratch)
+        return null; // handled below
+      })();
     }
 
-    // Thumbnail strip
+    // Thumbnail
     const thumb  = document.createElement('div');
-    thumb.className = 'page-thumb';
-    thumb.title  = `Page ${i}`;
+    thumb.className = 'page-thumb ' + (needsChange ? 'thumb-converted' : 'thumb-skipped');
+    thumb.title  = `Page ${i} — ${pageIsDark ? 'Dark' : 'Light'} → ${needsChange ? (pageIsDark ? 'Light' : 'Dark') : 'No change'}`;
     const tc     = document.createElement('canvas');
     tc.width     = cv.width;
     tc.height    = cv.height;
     tc.getContext('2d').drawImage(cv, 0, 0);
     const tlabel = document.createElement('div');
     tlabel.className   = 'page-thumb-label';
-    tlabel.textContent = `Page ${i}`;
+    tlabel.textContent = `P${i} ${needsChange ? '✓' : '–'}`;
     thumb.appendChild(tc);
     thumb.appendChild(tlabel);
     strip.appendChild(thumb);
+
+    // Summary table row
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${i}</strong></td>
+      <td><span class="pill ${pageIsDark ? 'pill-dark' : 'pill-light'}">${pageIsDark ? '🌑 Dark' : '☀️ Light'}</span></td>
+      <td>${needsChange
+        ? `Convert to <strong>${pageIsDark ? 'Light' : 'Dark'}</strong>`
+        : '<em style="color:var(--text-secondary)">Already correct</em>'}</td>
+      <td><span class="pill ${needsChange ? 'pill-converted' : 'pill-skipped'}">${needsChange ? '✓ Converted' : '– Skipped'}</span></td>
+    `;
+    tbody.appendChild(tr);
   }
 
+  // ── Re-render original page 1 for side-by-side preview ──
+  const page1orig = await pdf.getPage(1);
+  const vp1       = page1orig.getViewport({ scale: 1.8 });
+  const origCv    = document.createElement('canvas');
+  origCv.width    = vp1.width;
+  origCv.height   = vp1.height;
+  await page1orig.render({ canvasContext: origCv.getContext('2d'), viewport: vp1 }).promise;
+  originalDataUrl = origCv.toDataURL('image/png');
+
+  document.getElementById('originalImg').src            = originalDataUrl;
+  document.getElementById('origHeaderText').textContent = 'Original (Page 1)';
+  document.getElementById('convHeaderText').textContent = 'Converted (Page 1)';
+
+  // Put converted page 1 into result canvas
+  const rc   = document.getElementById('resultCanvas');
+  const img1 = await loadImage(allPageDataUrls[0]);
+  rc.width   = img1.naturalWidth;
+  rc.height  = img1.naturalHeight;
+  rc.getContext('2d').drawImage(img1, 0, 0);
+
+  // Page 1 badge
+  const page1IsDark  = getAvgBrightness(origCv.getContext('2d').getImageData(0, 0, vp1.width, vp1.height)) < 128;
+  const page1Changed = page1IsDark !== (currentMode === 'light-to-dark');
+  const badge = document.getElementById('resultBadge');
+  badge.style.display = 'inline-block';
+  badge.className     = 'badge ' + (page1Changed ? 'badge-converted' : 'badge-same');
+  badge.textContent   = page1Changed ? 'Converted' : 'No change';
+
+  // Detected info summary
+  const detEl = document.getElementById('detectedInfo');
+  const detTx = document.getElementById('detectedText');
+  detEl.classList.add('visible');
+  detTx.innerHTML =
+    `<strong>${convertedCount}</strong> page${convertedCount !== 1 ? 's' : ''} converted &nbsp;·&nbsp; ` +
+    `<strong>${skippedCount}</strong> page${skippedCount !== 1 ? 's' : ''} already correct (skipped).`;
+
   // Page count banner
-  if (totalPages > 1) {
-    document.getElementById('pageCountText').textContent =
-      `${totalPages} pages processed — downloading as a single PDF file.`;
-    document.getElementById('pageCountInfo').classList.add('visible');
-    document.getElementById('allPagesLabel').style.display = 'block';
-    strip.classList.add('visible');
-  }
+  document.getElementById('pageCountText').textContent =
+    `${totalPages} pages processed — downloading as a single PDF.`;
+  document.getElementById('pageCountInfo').classList.add('visible');
+
+  // Show thumbnails & summary table
+  document.getElementById('allPagesLabel').style.display = 'block';
+  strip.classList.add('visible');
+  document.getElementById('pageSummaryWrap').style.display = 'block';
 
   document.getElementById('downloadBtnText').textContent =
     `Download PDF (${totalPages} page${totalPages > 1 ? 's' : ''})`;
 
-  setProgress(100, noChange
-    ? `Done — PDF already matches selected theme. (${totalPages} pages)`
-    : `All ${totalPages} page${totalPages > 1 ? 's' : ''} converted!`);
-
-  showResults(noChange);
-}
-
-// ── UI Helpers ───────────────────────────────────────────────────
-function showDetected(isDark, noChange) {
-  const el = document.getElementById('detectedInfo');
-  const tx = document.getElementById('detectedText');
-  el.classList.add('visible');
-  if (noChange) {
-    tx.innerHTML = `Detected: <strong>${isDark ? 'Dark' : 'Light'}</strong> — already matches your selected mode. No changes applied.`;
-  } else {
-    tx.innerHTML = `Detected: <strong>${isDark ? 'Dark' : 'Light'}</strong> — converting to <strong>${isDark ? 'Light' : 'Dark'}</strong> theme.`;
-  }
-}
-
-function showResults(noChange) {
-  const badge = document.getElementById('resultBadge');
-  badge.style.display = 'inline-block';
-  badge.className     = 'badge ' + (noChange ? 'badge-same' : 'badge-converted');
-  badge.textContent   = noChange ? 'No change' : 'Converted';
+  setProgress(100, `Done — ${convertedCount} converted, ${skippedCount} skipped.`);
   document.getElementById('resultsCard').classList.add('visible');
   document.getElementById('convertBtn').disabled = false;
   hideProgress();
@@ -315,15 +353,13 @@ function showResults(noChange) {
 async function downloadResult() {
   if (!allPageDataUrls.length) return;
 
-  const btn = document.getElementById('downloadBtn');
-  btn.disabled = true;
-
+  const btn      = document.getElementById('downloadBtn');
+  btn.disabled   = true;
   const baseName = currentFile
     ? currentFile.name.replace(/\.[^.]+$/, '')
     : 'converted';
 
   if (!isPDF) {
-    // Image → download as PNG
     const a    = document.createElement('a');
     a.download = baseName + '-converted.png';
     a.href     = allPageDataUrls[0];
@@ -332,45 +368,40 @@ async function downloadResult() {
     return;
   }
 
-  // PDF → rebuild as PDF using jsPDF
-  btn.innerHTML = '<i class="ti ti-loader-2" aria-hidden="true"></i> Building PDF...';
+  // Rebuild PDF
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> Building PDF...';
 
   const { jsPDF } = window.jspdf;
+  const firstImg  = await loadImage(allPageDataUrls[0]);
+  const ptW = firstImg.naturalWidth  * 0.75;
+  const ptH = firstImg.naturalHeight * 0.75;
 
-  // Load first page to get dimensions
-  const firstImg = await loadImage(allPageDataUrls[0]);
-  const pxW = firstImg.width;
-  const pxH = firstImg.height;
-
-  // Use pt units; 1 px ≈ 0.75 pt at 96dpi
-  const ptW = pxW * 0.75;
-  const ptH = pxH * 0.75;
-
-  const orientation = ptW > ptH ? 'landscape' : 'portrait';
-  const doc = new jsPDF({ orientation, unit: 'pt', format: [ptW, ptH] });
+  const doc = new jsPDF({
+    orientation: ptW > ptH ? 'landscape' : 'portrait',
+    unit:   'pt',
+    format: [ptW, ptH]
+  });
 
   for (let i = 0; i < allPageDataUrls.length; i++) {
-    btn.innerHTML = `<i class="ti ti-loader-2" aria-hidden="true"></i> Building PDF (${i + 1}/${allPageDataUrls.length})...`;
+    btn.innerHTML = `<i class="ti ti-loader-2"></i> Building PDF (${i + 1}/${allPageDataUrls.length})...`;
 
-    if (i > 0) {
-      const img  = await loadImage(allPageDataUrls[i]);
-      const w    = img.width  * 0.75;
-      const h    = img.height * 0.75;
-      doc.addPage([w, h], w > h ? 'landscape' : 'portrait');
-    }
+    const img = await loadImage(allPageDataUrls[i]);
+    const w   = img.naturalWidth  * 0.75;
+    const h   = img.naturalHeight * 0.75;
 
-    doc.addImage(allPageDataUrls[i], 'PNG', 0, 0, ptW, ptH, '', 'FAST');
+    if (i > 0) doc.addPage([w, h], w > h ? 'landscape' : 'portrait');
+    doc.addImage(allPageDataUrls[i], 'PNG', 0, 0, w, h, '', 'FAST');
   }
 
   doc.save(baseName + '-converted.pdf');
 
-  btn.disabled = false;
-  btn.innerHTML = `<i class="ti ti-download" aria-hidden="true"></i> <span id="downloadBtnText">Download PDF (${allPageDataUrls.length} page${allPageDataUrls.length > 1 ? 's' : ''})</span>`;
+  btn.disabled  = false;
+  btn.innerHTML = `<i class="ti ti-download"></i> <span id="downloadBtnText">Download PDF (${allPageDataUrls.length} pages)</span>`;
 }
 
 function loadImage(src) {
   return new Promise((res, rej) => {
-    const img  = new Image();
+    const img   = new Image();
     img.onload  = () => res(img);
     img.onerror = rej;
     img.src     = src;
