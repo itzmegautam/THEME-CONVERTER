@@ -15,7 +15,7 @@
     <div class="header-icon"><i class="ti ti-wand" aria-hidden="true"></i></div>
     <h1>Theme Converter</h1>
     <p>Upload an image or PDF and convert between dark and light themes.<br>
-       Images download as PNG &nbsp;·&nbsp; PDFs download as PDF (all pages).</p>
+       Each PDF page is individually detected and converted.</p>
   </div>
 
   <!-- Upload Card -->
@@ -24,7 +24,7 @@
     <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
       <i class="ti ti-cloud-upload upload-icon" aria-hidden="true"></i>
       <p class="upload-title"><span>Click to upload</span> or drag & drop</p>
-      <p class="upload-sub">PNG, JPG, WEBP · PDF (all pages converted)</p>
+      <p class="upload-sub">PNG, JPG, WEBP · PDF (every page detected & converted individually)</p>
       <input type="file" id="fileInput" accept="image/*,application/pdf" />
     </div>
     <div class="file-info" id="fileInfo">
@@ -45,14 +45,14 @@
         <div class="option-icon"><i class="ti ti-sun" aria-hidden="true"></i></div>
         <div>
           <div>Dark → Light</div>
-          <div class="option-text-sub">Convert dark to light</div>
+          <div class="option-text-sub">Make every page light</div>
         </div>
       </button>
       <button class="option-btn l2d" id="btn-l2d" onclick="selectMode('light-to-dark')">
         <div class="option-icon"><i class="ti ti-moon" aria-hidden="true"></i></div>
         <div>
           <div>Light → Dark</div>
-          <div class="option-text-sub">Convert light to dark</div>
+          <div class="option-text-sub">Make every page dark</div>
         </div>
       </button>
     </div>
@@ -79,10 +79,10 @@
       <span id="pageCountText"></span>
     </div>
 
-    <!-- Side-by-side preview -->
+    <!-- Side-by-side preview (Page 1) -->
     <div class="preview-grid">
       <div class="preview-panel">
-        <div class="preview-header" id="origHeader">
+        <div class="preview-header">
           <i class="ti ti-photo" aria-hidden="true"></i>
           <span id="origHeaderText">Original</span>
         </div>
@@ -91,7 +91,7 @@
         </div>
       </div>
       <div class="preview-panel">
-        <div class="preview-header" id="convHeader">
+        <div class="preview-header">
           <i class="ti ti-wand" aria-hidden="true"></i>
           <span id="convHeaderText">Converted</span>
           <span class="badge" id="resultBadge" style="display:none"></span>
@@ -102,8 +102,26 @@
       </div>
     </div>
 
-    <!-- Page thumbnails (PDF only) -->
-    <p class="section-label" id="allPagesLabel" style="display:none; margin-top:0.75rem;">
+    <!-- Per-page summary table (PDF only) -->
+    <div id="pageSummaryWrap" style="display:none; margin-bottom:1.25rem;">
+      <p class="section-label">Page-by-page Summary</p>
+      <div class="summary-table-wrap">
+        <table class="summary-table" id="summaryTable">
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>Detected</th>
+              <th>Action</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Thumbnail strip -->
+    <p class="section-label" id="allPagesLabel" style="display:none; margin-top:0.25rem;">
       All Converted Pages
     </p>
     <div class="pages-strip" id="pagesStrip"></div>
@@ -115,9 +133,8 @@
     </button>
   </div>
 
-</div><!-- /page -->
+</div>
 
-<!-- Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="script.js"></script>
 </body>
