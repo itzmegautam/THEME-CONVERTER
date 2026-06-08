@@ -19,6 +19,8 @@
   --success-text: #3b6d11;
   --warn-bg: #faeeda;
   --warn-text: #854f0b;
+  --info-bg: #e8f0fe;
+  --info-text: #1a56a0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -37,6 +39,8 @@
     --success-text: #85c44a;
     --warn-bg: #2e1f07;
     --warn-text: #e8a642;
+    --info-bg: #0d1f3c;
+    --info-text: #7ab3f5;
   }
 }
 
@@ -48,7 +52,7 @@ html, body {
 }
 
 .page {
-  max-width: 680px;
+  max-width: 700px;
   margin: 0 auto;
   padding: 3rem 1.5rem 4rem;
 }
@@ -224,10 +228,47 @@ html, body {
 .preview-body img,
 .preview-body canvas { width: 100%; display: block; object-fit: contain; }
 
+/* ── Summary Table ── */
+.summary-table-wrap {
+  overflow-x: auto;
+  border: 0.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  margin-bottom: 1.25rem;
+}
+.summary-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px;
+}
+.summary-table th {
+  padding: 8px 12px; text-align: left;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  border-bottom: 0.5px solid var(--border-light);
+}
+.summary-table td {
+  padding: 7px 12px;
+  border-bottom: 0.5px solid var(--border-light);
+  color: var(--text-primary);
+}
+.summary-table tr:last-child td { border-bottom: none; }
+.summary-table tr:nth-child(even) td { background: var(--bg-secondary); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 99px;
+  font-size: 11px; font-weight: 600;
+}
+.pill-dark  { background: #2c2c2a; color: #f1efe8; }
+.pill-light { background: #f1efe8; color: #2c2c2a; border: 1px solid #d3d1c7; }
+.pill-converted { background: var(--success-bg); color: var(--success-text); }
+.pill-skipped   { background: var(--warn-bg);    color: var(--warn-text);    }
+
 /* ── Pages Strip ── */
 .pages-strip {
   display: none; gap: 8px; overflow-x: auto;
-  padding: 8px 0; margin-bottom: 1rem;
+  padding: 8px 0; margin-bottom: 1.25rem;
 }
 .pages-strip.visible { display: flex; }
 .page-thumb {
@@ -242,6 +283,8 @@ html, body {
   font-size: 10px; text-align: center; padding: 3px;
   background: var(--bg-secondary); color: var(--text-secondary);
 }
+.page-thumb.thumb-converted { border-color: var(--success-text); }
+.page-thumb.thumb-skipped   { border-color: var(--warn-text);    }
 
 /* ── Download Button ── */
 .download-btn {
